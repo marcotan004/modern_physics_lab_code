@@ -1,3 +1,4 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import math
 import numpy as np
@@ -38,19 +39,24 @@ def getHalfLife(b):
 
 
 if __name__ == '__main__':
-    data_file = '09-19-2023.IEC'
-    time_file ='09-05-2023-Time-Calibration.IEC'
+    data_file = '9-21-2023.IEC'
+    
+    time_file = '09-05-2023-Time-Calibration.IEC'
     start = 228
-    end = 500
+    end = 541
     
     # 330 channels --> 0.16 microseconds
     x, y = processData(data_file)
-
+    
     # time calibration factor found by looking at the graph from time_data
     channelTimeFactor = 0.16/330.0 #* 10**-6
     times = [round(num*channelTimeFactor,5) for num in x]
     
     t0 = times[start]
+
+    for i, num in enumerate(y):
+        print(i, num)
+    print(t0)
 
     # exponential function
     def func(x, a, b, c):
@@ -61,14 +67,12 @@ if __name__ == '__main__':
 
     # standard deviations of ['a', 'b', 'c'] in perr
     perr = np.diag(pcov)
+    print(pcov)
     print('b = {0} += {1}'.format(popt[1], perr[1]))
     print('Halflife: {0} microseconds'.format(round(getHalfLife(popt[1]),4)))
-
-    # for checking if it is an exponential curve
-    log_times = [math.log(i) for i in y[start:end]]
-
+    print(times[-1])
     plt.figure(1, figsize=(5,5))
-    plt.suptitle('Count Data')
+    plt.suptitle('Experiment 2 Count Data')
 
     # set mins and maxes on graph
     ax = plt.gca()
@@ -77,9 +81,11 @@ if __name__ == '__main__':
 
     # to calculate the fit
     linsp = np.array(times)
-    plt.plot(linsp, func(linsp, *popt), times, y, label='fit')
-
-    plt.xlabel('MicroSeconds')
+    plt.scatter(times, y, s=1, label='data')
+    plt.plot(linsp, func(linsp, *popt), label=r'${y = 505.6e^{-7.89(x-0.55)} + 0.72}$', c='red')
+    #r'${y = 96.9e^{-7.47(x-0.61)} + 0.27}$'
+    #label=f'y = {round(popt[0],1)} * exp(-{round(popt[1],2)} * x) + {round(popt[2],2)}'
+    plt.xlabel(u'Time (\u03bcs)')
     plt.ylabel('Count')
     plt.legend()
     plt.show()
