@@ -51,11 +51,17 @@ def plot_gaussian(start_energy, end_energy, x, y, params):
     plt.plot(fit_x, fit_gaussian(fix_x, *params), 'r.:', label='gaussian fit')
     plt.legend()
 
-def get_moment(factor):
+def get_moment(energy, factor):
     ''' calculate the moment of inertia '''
-    h = 4.135*(10**-15)*(10**-3) #keV * s
+    h = 6.582*(10**-16) #eV * s
+    energy = energy*1000 # keV -> eV
 
-    return((2*factor)/(h**2))
+    return (h**2/(2*energy))*factor
+
+def expected_energy(moment, factor):
+    h = 6.582*(10**-16) 
+
+    return ((h**2)/(2*(moment))) * factor
 
 if __name__ == '__main__':
     data_file = 'Ho166_9-28-23.IEC'
@@ -87,8 +93,11 @@ if __name__ == '__main__':
     # match levels to factors from red book and get moment of inertia
     levels,std = np.array(levels),np.array(std)
     factors = np.array([6, 20, 42, 72])
-    print('moment: {0} +- {1}'.format(get_moment(factors), get_moment(std)))
+    print(levels)
+    print(factors)
+    print('moment: {0} +- {1}'.format(get_moment(levels, factors), get_moment(levels, std)))
     print('level/factors: {0}'.format(levels/factors))
+    print('expected energy {0}'.format(expected_energy(get_moment(levels, factors)[0], 6)))
     
     ax = plt.gca()
     ax.set_xlim(min(x), 2000)
