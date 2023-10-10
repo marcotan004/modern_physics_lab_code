@@ -25,10 +25,11 @@ def fit_gaussian(x, H, A, mu, sigma):
     return A*np.exp(-(x-mu)**2/(2*sigma**2)) + H
 
 def get_x_val(energy):
-    return int((energy-1.36)/0.243)
+    return int((energy-1.36)/(0.243))
 
 def get_gaussian(start_energy, end_energy, x, y):
     start_range, end_range = get_x_val(start_energy), get_x_val(end_energy)
+    
     x = x[start_range:end_range]
     y = y[start_range:end_range]
 
@@ -46,7 +47,7 @@ def plot_gaussian(start_energy, end_energy, x, y, params):
     plt.legend()
 
 def get_moment(factor):
-    h = 6.582e-34 #eV * s
+    h = 4.135*(10**-15)*(10**-3) #keV * s
 
     return((2*factor)/(h**2))
 
@@ -59,7 +60,7 @@ if __name__ == '__main__':
         y[i] = int(item)
 
     y = np.array(y)
-    x = (0.243*x*1000) + 1.36 # multiply by 1000 since in keV
+    x = (0.243*x) + 1.36 # multiply by 1000 since in keV
 
     intervals = [[361.8, 367.7], [276.6, 281.81], [180.9, 185.92], [78, 81.5]]
     intervals.reverse()
