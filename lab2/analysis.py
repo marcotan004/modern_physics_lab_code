@@ -19,12 +19,17 @@ def processData(file_name):
             cleaned = line.split()[1:]
             x = x + [int(cleaned[0]) + i for i in range(5)]
             y.extend(cleaned[1:])
+        
+    x = np.array(x)
+    for i, item in enumerate(y):
+        y[i] = int(item)
+    y = np.array(y) # counts
     
     return x, y
 
 def fit_gaussian(x, H, A, mu, sigma):
     ''' gaussian fit '''
-    return A*np.exp(-(x-mu)**2/(2*sigma**2)) + H
+    return A*np.exp((-(x-mu)**2)/(2*(sigma**2))) + H
 
 def get_x_val(energy): 
     '''get the x index that matches the energy'''
@@ -38,12 +43,16 @@ def get_gaussian(start_energy, end_energy, x, y):
 
     mean = sum(x*y)/sum(y)                  
     sigma = sum(y*(x-mean)**2)/sum(y) 
+    print(sigma)
 
     return get_mu_sigma(curve_fit(fit_gaussian, x, y, p0=[min(y), max(y), mean, sigma]))
 
 def get_mu_sigma(results):
     ''' get the mean and sigma values for the gaussian from the curve fit '''
-    return results[0][2], np.diag(results[1])[2]
+    return results[0][2], results[0][3]
+
+def get_fwhm(sigma):
+    return 2 * math.sqrt(2*math.log(2)) * sigma
 
 def plot_gaussian(start_energy, end_energy, x, y, params):
     ''' plot the gaussian '''
@@ -60,7 +69,9 @@ def get_moment(energy, factor):
 
 def get_moment_uncertainty(std, energy, factor):
     h = 6.582*(10**-16) #eV * s
-    return (factor)*(h**2)*(1/2)*(std/energy)
+    energy = energy*1000
+    std = std*1000
+    return (h**2/(2*(energy**2)))*factor*std
 
 def expected_energy(moment, factor):
     h = 6.582*(10**-16) 
@@ -91,17 +102,20 @@ def phi_fluid(M, R, phi):
     denominator = 9 * M * (R ** 2)
     return math.sqrt(numerator/denominator)
 
+def uncertainty(u):
+    return (1/u.size) * math.sqrt((u**2).sum())
+
 if __name__ == '__main__':
     data_file = 'Ho166_9-28-23.IEC'
-    plot = False # plot option
+    calib = 'Co60_9-28-23.IEC'
+    plot = True # plot option
 
     # get the and transform the vectors
     x, y = processData(data_file)
-    x = np.array(x)
-    for i, item in enumerate(y):
-        y[i] = int(item)
-    y = np.array(y) # counts
+    xc, yc = processData(calib)
+
     x = (0.243*x) + 1.36 # keV
+    xc = (0.243*xc) + 1.36
 
     # calculate gaussian curve fits for corresponding gamma rays
     intervals = [[361.8, 367.7], [276.6, 281.81], [180.9, 185.92], [78, 81.5]]
@@ -121,12 +135,17 @@ if __name__ == '__main__':
 
     # match levels to factors from red book and get moment of inertia
     levels,std = np.array(levels),np.array(std)
+    print(levels)
+    print(std)
     factors = np.array([6, 20, 42, 72])
     moments = get_moment(levels, factors)
     uncert = get_moment_uncertainty(std, levels, factors)
-
+    real_vals = np.array([80.59, 264.98, 545.44, 911.18])
+    sd = np.array([0.005, 0.006, 0.008, 0.012])
     print('moment of inertia (eV * s**2): {0} +- {1}'.format(moments, uncert))
-    print('mean moment of inertia: {0}'.format(np.mean(moments)))
+    real = get_moment(real_vals, factors)
+    print('real moment of inertia (eV * s**2): {0} +- {1}'.format(np.mean(real), np.std(real)))
+    print('mean moment of inertia: {0} +/- {1} eV * s^2'.format(np.mean(moments), np.std(moments)))
     print('level/factors: {0}'.format(levels/factors))
     
     # calculate beta values using mean phi
@@ -137,9 +156,16 @@ if __name__ == '__main__':
     beta_fluid = round(phi_fluid(M, R, phi), 2)
     print('Beta of rigid body model: {0} | Beta of fluid model: {1}'.format(beta_rigid, beta_fluid))
 
+    interval = [1328, 1332]
+    r = get_gaussian(interval[0], interval[1], xc, yc);
+    print('mean: {0}, sigma: {1}, fwhm: {2}'.format(r[0], r[1], get_fwhm(r[1]))) # use sigma for this one results[0][3] of get_mu_sigma
+    #calculate peak and fwhm of cobalt
     if plot:
         ax = plt.gca()
-        ax.set_xlim(min(x), 2000)
-        ax.set_ylim(min(y), 50000)
+        ax.set_xlim(min(x), 1020)
+        ax.set_ylim(min(y), max(y) + 1000)
+        ax.set_xlabel("Energy (keV)")
+        ax.set_ylabel("Count")
+        ax.set_title("Observed Ho-166 Spectrum")
         plt.bar(x,y)
         plt.show()
