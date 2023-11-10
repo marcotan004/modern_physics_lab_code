@@ -78,6 +78,11 @@ def get_peak(y, l, r):
 def get_width_of_foil(observed, original, dE_e, dE_N):
     return (original - observed) / (dE_e + dE_N)
 
+def get_error(observed, original, dE_e, dE_N):
+    observed_e = observed*Constants.RESOLUTION
+    original_e = original * Constants.RESOLUTION
+
+    return round((((observed_e ** 2) + (original_e ** 2)) ** (0.5)) / (dE_e + dE_N), 3)
 
 if __name__ == '__main__':
     path = '../data/'
@@ -107,8 +112,7 @@ if __name__ == '__main__':
     print(f"Mean: {r[0]}, {AM_241}")
 
     # calculate widths
-    # I found the peaks manually since I was unable to fit gaussians on GD and the resulting graph from AM was a double gaussian.
-    # Instead I tried to match the peaks in each graph to its corresponding peak from the no foil graph
+    # I found the peaks manually since I was unable to fit gaussians on GD and AM non-foil graphs
     HAV_23_GD = get_energy(471)
     HAV_23_AM = get_energy(1176)
     HAV_46_GD = get_energy(111)
@@ -119,28 +123,27 @@ if __name__ == '__main__':
     NO_FOIL_AM = get_energy(1400)
 
     width = get_width_of_foil(AL_GD, NO_FOIL_GD, Constants.dE_ALUM_E_3180, Constants.dE_ALUM_N_3180)
-    print(f"GD calculated width (AL): {round(width, 3)} microns")
+    print(f"GD calculated width (AL): {round(width, 3)} +/- {get_error(AL_GD, NO_FOIL_GD, Constants.dE_ALUM_E_3180, Constants.dE_ALUM_N_3180)} microns")
     
     width = get_width_of_foil(AL_AM,  NO_FOIL_AM, Constants.dE_ALUM_E_5490, Constants.dE_ALUM_N_5490)
-    print(f"AM calculated width (AL): {round(width, 3)} microns")
+    print(f"AM calculated width (AL): {round(width, 3)} +/- {get_error(AL_AM,  NO_FOIL_AM, Constants.dE_ALUM_E_5490, Constants.dE_ALUM_N_5490)} microns")
     
     width = get_width_of_foil(HAV_23_GD, NO_FOIL_GD, Constants.dE_HAV_E_3180, Constants.dE_HAV_N_3180)
-    print(f"GD calculated width (HAV 2.3): {round(width, 3)} microns")
+    print(f"GD calculated width (HAV 2.3): {round(width, 3)} +/- {get_error(HAV_23_GD, NO_FOIL_GD, Constants.dE_HAV_E_3180, Constants.dE_HAV_N_3180)} microns")
 
     width = get_width_of_foil(HAV_23_AM, NO_FOIL_AM, Constants.dE_HAV_E_5490, Constants.dE_HAV_N_5490)
-    print(f"AM calculated width (HAV 2.3): {round(width, 3)} microns")
+    print(f"AM calculated width (HAV 2.3): {round(width, 3)} +/- {get_error(HAV_23_AM, NO_FOIL_AM, Constants.dE_HAV_E_5490, Constants.dE_HAV_N_5490)} microns")
 
     width = get_width_of_foil(HAV_46_GD, NO_FOIL_GD, Constants.dE_HAV_E_3180, Constants.dE_HAV_N_3180)
-    print(f"GD calculated width (HAV 4.6): {round(width, 3)} microns")
+    print(f"GD calculated width (HAV 4.6): {round(width, 3)} +/- {get_error(HAV_46_GD, NO_FOIL_GD, Constants.dE_HAV_E_3180, Constants.dE_HAV_N_3180)} microns")
 
     width = get_width_of_foil(HAV_46_AM, NO_FOIL_AM, Constants.dE_HAV_E_5490, Constants.dE_HAV_N_5490)
-    print(f"AM calculated width (HAV 4.6): {round(width, 3)} microns")
+    print(f"AM calculated width (HAV 4.6): {round(width, 3)} +/- {get_error(HAV_46_AM, NO_FOIL_AM, Constants.dE_HAV_E_5490, Constants.dE_HAV_N_5490)} microns")
 
     if plot:
         ax = plt.gca()
         ax.set_xlabel("Energy (keV)")
         ax.set_ylabel("Count")
         ax.set_title("Calibration")
-        plt.xlim(4000, 4600)
-        plt.bar(x,y)
+        plt.bar(xc,yc)
         plt.show()
