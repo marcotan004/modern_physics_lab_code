@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import math
 import numpy as np
 from scipy.optimize import curve_fit
+import Constants
 
 def processData(file_name):
     ''' data --> vectors '''
@@ -35,13 +36,16 @@ def get_x_val(energy, m, b):
     '''get the x index that matches the energy'''
     return int((energy-b)/(m))
 
+def get_energy(channel):
+    return (Constants.CALIB_SLOPE*channel) + Constants.CALIB_INT
+
 def get_gaussian(start_energy, end_energy, x, y, m, b):
     start_range, end_range = get_x_val(start_energy, m, b), get_x_val(end_energy, m, b)
     x = x[start_range:end_range]
     y = y[start_range:end_range]
     mean = sum(x*y)/sum(y)              
     sigma = sum(y*(x-mean)**2)/sum(y) 
-
+    print(min(y), max(y), (start_energy+end_energy)/2, sigma)
     return get_mu_sigma(curve_fit(fit_gaussian, x, y, p0=[min(y), max(y), mean, sigma]))
 
 def get_mu_sigma(results):
@@ -57,9 +61,27 @@ def plot_gaussian(start_energy, end_energy, x, y, params):
     plt.plot(fit_x, fit_gaussian(fix_x, *params), 'r.:', label='gaussian fit')
     plt.legend()
 
+def get_peak(y, l, r):
+    l = get_x_val(l, Constants.CALIB_SLOPE, Constants.CALIB_INT)
+    r = get_x_val(r, Constants.CALIB_SLOPE, Constants.CALIB_INT)
+    print(l, r)
+
+    count = 0
+    sum = 0
+    for i in range(l, r+1):
+        energy = (Constants.CALIB_SLOPE * i) + Constants.CALIB_INT
+        sum = sum + (y[i] * energy)
+        count += y[i]
+    
+    return sum/count
+
+def get_width_of_foil(observed, original, dE_e, dE_N):
+    return (original - observed) / (dE_e + dE_N)
+
+
 if __name__ == '__main__':
     path = '../data/'
-    data_file = '23-Foil-10-31-2023.IEC'
+    data_file = 'Al-Foil-10-26-2023.IEC'
     calib = '47-5V-10-26-2023.IEC'
     plot = True # plot option
 
@@ -67,22 +89,58 @@ if __name__ == '__main__':
     x, y = processData(path + data_file)
     xc, yc = processData(path + calib)
 
-    m = 3.883
-    b = 37.4
+    m = Constants.CALIB_SLOPE
+    b = Constants.CALIB_INT
     x = (m*x) + b # keV
     xc = (m*xc) + b
     
     # get resolution from 3182 keV peak
-    interval = [3165, 3193]
-    r = get_gaussian(interval[0], interval[1], xc, yc, m, b)
+    GD_interval = [3165, 3193]
+    AL_interval = [5460, 5489]
+
+    r = get_gaussian(GD_interval[0], GD_interval[1], xc, yc, m, b)
     fwhm = get_fwhm(r[1])
+    GD_148 = r[0]
+    AM_241 = (Constants.AM_PEAK * m) + b
     print(f"FWHM: {fwhm}")
     print(f"Resolution: {(fwhm//m)/(get_x_val(r[0], m, b))}")
+    print(f"Mean: {r[0]}, {AM_241}")
+
+    # calculate widths
+    # I found the peaks manually since I was unable to fit gaussians on GD and the resulting graph from AM was a double gaussian.
+    # Instead I tried to match the peaks in each graph to its corresponding peak from the no foil graph
+    HAV_23_GD = get_energy(471)
+    HAV_23_AM = get_energy(1176)
+    HAV_46_GD = get_energy(111)
+    HAV_46_AM = get_energy(943)
+    AL_GD = get_energy(299)
+    AL_AM = get_energy(1079)
+    NO_FOIL_GD = get_energy(808)
+    NO_FOIL_AM = get_energy(1400)
+
+    width = get_width_of_foil(AL_GD, NO_FOIL_GD, Constants.dE_ALUM_E_3180, Constants.dE_ALUM_N_3180)
+    print(f"GD calculated width (AL): {round(width, 3)} microns")
+    
+    width = get_width_of_foil(AL_AM,  NO_FOIL_AM, Constants.dE_ALUM_E_5490, Constants.dE_ALUM_N_5490)
+    print(f"AM calculated width (AL): {round(width, 3)} microns")
+    
+    width = get_width_of_foil(HAV_23_GD, NO_FOIL_GD, Constants.dE_HAV_E_3180, Constants.dE_HAV_N_3180)
+    print(f"GD calculated width (HAV 2.3): {round(width, 3)} microns")
+
+    width = get_width_of_foil(HAV_23_AM, NO_FOIL_AM, Constants.dE_HAV_E_5490, Constants.dE_HAV_N_5490)
+    print(f"AM calculated width (HAV 2.3): {round(width, 3)} microns")
+
+    width = get_width_of_foil(HAV_46_GD, NO_FOIL_GD, Constants.dE_HAV_E_3180, Constants.dE_HAV_N_3180)
+    print(f"GD calculated width (HAV 4.6): {round(width, 3)} microns")
+
+    width = get_width_of_foil(HAV_46_AM, NO_FOIL_AM, Constants.dE_HAV_E_5490, Constants.dE_HAV_N_5490)
+    print(f"AM calculated width (HAV 4.6): {round(width, 3)} microns")
 
     if plot:
         ax = plt.gca()
         ax.set_xlabel("Energy (keV)")
         ax.set_ylabel("Count")
         ax.set_title("Calibration")
-        plt.bar(xc,yc)
+        plt.xlim(4000, 4600)
+        plt.bar(x,y)
         plt.show()
