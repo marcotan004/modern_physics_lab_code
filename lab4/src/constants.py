@@ -1,0 +1,9 @@
+BA_FILE='../data/11-16-23-Ba.IEC'
+CU_FILE='../data/11-16-23-Cu.IEC'
+MO_FILE='../data/11-16-23-Mo.IEC'
+RB_FILE='../data/11-16-23-Rb.IEC'
+TB_FILE='../data/11-16-23-Tb.IEC'
+AG_FILE='../data/11-16-23-Ag.IEC'
+CALIB_SLOPE = 14.20
+CALIB_INT = 1.947
+RESOLUTION = 0.00124
